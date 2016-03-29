@@ -1,0 +1,6 @@
+*.swp
+*~
+*.d
+*.o
+src/lex.yy.c
+src/parse.tab.c
