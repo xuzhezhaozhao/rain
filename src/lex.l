@@ -31,6 +31,9 @@ NUMBER ([0-9]+("."[0-9]*)?)|(([0-9]+)?"."[0-9]+)|([0-9]+("."[0-9]*)?[dDeEgG][+-]
 {NEWLINE}		{}
 {WHITESPACE}	{}
 
+ /* TODO 块注释 --[[  --]] */
+"--"[^\r\n]*{NEWLINE} {}
+
 
 "+"  			LEX_RETURN(op_plus);
 "-"  			LEX_RETURN(op_minus);
@@ -93,7 +96,8 @@ false					LEX_RETURN(keyword_false);
 [)\]}]           		LEX_RETURN(yytext[0]);
 
 
-\"([^\\\"]|\\.)*\"      {
+\"([^\\\"]|\\.)*\" |
+\'([^\\\']|\\.)*\' {
   LEX_RETURN(lit_string);
 }
 
