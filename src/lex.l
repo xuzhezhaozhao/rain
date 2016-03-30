@@ -59,8 +59,6 @@ NUMBER ([0-9]+("."[0-9]*)?)|(([0-9]+)?"."[0-9]+)|([0-9]+("."[0-9]*)?[dDeEgG][+-]
 "&"  			LEX_RETURN(op_amper);
 
 ".."			LEX_RETURN(op_conc);
-"::"			LEX_RETURN(op_label);
-
 "..."			LEX_RETURN(op_ellips);
 
 
@@ -87,14 +85,33 @@ false					LEX_RETURN(keyword_false);
 
 
 {WORD}					LEX_RETURN(identifier);
-
 {NUMBER}				LEX_RETURN(lit_number);
 
-[(\[{,;:]		 		LEX_RETURN(yytext[0]);
+::{WORD}::				LEX_RETURN(label);
+
+[(\[{,;:.]		 		LEX_RETURN(yytext[0]);
 [)\]}]           		LEX_RETURN(yytext[0]);
 
 
+\"([^\\\"]|\\.)*\"      {
+  LEX_RETURN(lit_string);
+}
+
+
 . {
-	fprintf(stderr, "line %d: lexical error", yylineno);
+	char c = yytext[0];
+	fprintf(stderr, "%s:%d:lexical error", p->fname, yylineno);
+
+    if ((c & 0x80) || !isprint(c)) {
+      fprintf(stderr, "('\\%03o').\n", c);
+    }
+    else if (c == '\\') {
+      fprintf(stderr, "('\\\\').\n");
+    }
+    else {
+      fprintf(stderr, "('%c').\n", c);
+    }
+
 	exit(1);
 }
+%%

@@ -3,4 +3,7 @@
 *.d
 *.o
 src/lex.yy.c
-src/parse.tab.c
+src/lex.yy.h
+src/y.tab.c
+src/y.tab.h
+bin/

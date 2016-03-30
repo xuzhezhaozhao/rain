@@ -3,18 +3,28 @@
 #define YYDEBUG 1
 #define YYERROR_VERBOSE 1
 
+#include "node.h"
+#include "tstring.h"
+
+static void node_lineinfo(parser_state *p, node *node) {
+	if (!node) return;
+	node->fname = p->fname;
+	node->lineno = p->lineno;
+}
 
 %}
 
 %union {
-	char *c;
-	int n;
+	node *nd;
+	TString *id;
 }
 
-%type <c> keyword_local keyword_if keyword_then keyword_else keyword_elseif keyword_while keyword_do keyword_repeat keyword_until keyword_break keyword_goto keyword_for keyword_in keyword_function keyword_end keyword_return keyword_nil keyword_true keyword_false op_plus op_minus op_mult op_div op_mod op_eq op_neq op_lt op_le op_gt op_ge op_asgn op_and op_or op_not op_bar op_amper op_conc op_label op_ellips
-
-%type <n> lit_number lit_string identifier
-
+%type <nd> chunk block stats stat elsepart forexplist localdecl retstat retstat0
+%type <nd> funcname funcname0 varlist var namelist explist exp prefixexp
+%type <nd> functioncall args functiondef funcbody parlist tableconstructor 
+%type <nd> fieldlist fieldlist0 field fieldsep
+%type <id> Name 
+%type <nd> Numeral LiteralString label
 
 %pure-parser
 %parse-param 	{parser_state *p}
@@ -65,13 +75,13 @@ static void yyerror(parser_state *p, const char *s);
         op_bar
         op_amper
         op_conc
-		op_label
 		op_ellips
 
 %token
 		lit_number
 		lit_string
 		identifier
+		label
 
 
 /*
@@ -93,11 +103,22 @@ static void yyerror(parser_state *p, const char *s);
 
 %%
 chunk				: block
+		 				{
+							p->lval = $1;
+						}
 
 block 				: stats 
+						{
+						} 
 					| stats retstat
+						{
+							
+						}
 
 stats 				:
+						{
+
+						} 
 		  			| stats stat
 
 stat 				: ';'
@@ -134,8 +155,6 @@ retstat 			: retstat0
 retstat0 			: keyword_return
 		   			| keyword_return explist
 
-
-label 				: op_label Name op_label
 
 
 funcname 			: funcname0
@@ -242,5 +261,10 @@ LiteralString 		: lit_string
 
 static void yyerror(parser_state *p, const char *s)
 {
-    fprintf(stderr, "syntx error: %s at line %d.\n", s, yylineno);
+	++p->nerr;
+	if (p->fname) {
+    	fprintf(stderr, "%s:%d:%s\n", p->fname, yylineno, s);
+	} else {
+    	fprintf(stderr, "%d:%s\n", yylineno, s);
+	}
 }

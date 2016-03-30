@@ -1,6 +1,12 @@
+V ?= @
+TARGET = bin/rain
 
-YACC = bison
-LEX = flex
+TESTS = $(wildcard examples/*.lua)
 
-CC = gcc
-TARGET = rain
+.PHONY : all test clean
+
+all clean:
+	$(MAKE) -C src $@
+
+test : all
+	$(TARGET) -c $(TESTS)
