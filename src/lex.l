@@ -63,6 +63,7 @@ NUMBER ([0-9]+("."[0-9]*)?)|(([0-9]+)?"."[0-9]+)|([0-9]+("."[0-9]*)?[dDeEgG][+-]
 
 ".."			LEX_RETURN(op_conc);
 "..."			LEX_RETURN(op_ellips);
+"#"				LEX_RETURN(op_len);
 
 
 local					LEX_RETURN(keyword_local);

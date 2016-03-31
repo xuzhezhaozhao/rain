@@ -43,7 +43,12 @@ $(TARGET) : $(OBJS)
 	mkdir -p "$$(dirname $(TARGET))"
 	$(CC) $(CFLAGS) $(OBJS) -o $(TARGET) $(LIBS)
 
+
 clean:
 	rm -f y.output y.tab.c y.tab.h
 	rm -f lex.yy.c lex.yy.h
 	rm -f *.d *.o $(TARGET)
+
+.PHONY: clean
+
+-include $(DEPS)

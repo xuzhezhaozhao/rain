@@ -76,6 +76,7 @@ static void yyerror(parser_state *p, const char *s);
         op_amper
         op_conc
 		op_ellips
+		op_len
 
 %token
 		lit_number
@@ -96,7 +97,7 @@ static void yyerror(parser_state *p, const char *s);
 %right op_conc
 %left  op_plus op_minus
 %left  op_mult op_div op_mod
-%left op_not
+%left op_not op_len
 %right op_power
 
 %token op_HIGHEST
@@ -203,9 +204,9 @@ exp 				: keyword_nil
 					| exp op_or exp
 					| exp op_conc exp
 					| exp op_power exp
-					| op_plus exp			%prec op_not
 					| op_minus exp			%prec op_not
 					| op_not exp
+					| op_len exp
 					| '(' exp ')'
 
 prefixexp 			: var
