@@ -94,6 +94,7 @@ typedef struct node_nil {
 typedef struct node_block {
 	NODE_HEADER;
 	int len;
+	int maxLen;
 	node *stats;
 } node_block;
 
