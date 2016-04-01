@@ -12,9 +12,11 @@ typedef struct parser_state {
 } parser_state;
 
 typedef enum {
-	NODE_INT,
+	NODE_NUMBER,
+	NODE_INTEGER,
 	NODE_FLOAT,
 	NODE_STRING,
+	NODE_NAME,
 	NODE_NIL,
 	NODE_BLOCK,
 	NODE_ASGN,
@@ -25,8 +27,10 @@ typedef enum {
 	NODE_WHILE,
 	NODE_REPEAT,
 	NODE_IF,
-	NODE_ELSIF,
+	NODE_ELSEIF,
+	NODE_ELSE,
 	NODE_FORR,
+	NODE_FOREXPLIST,
 	NODE_FORIN,
 	NODE_FUNC,
 	NODE_LFUNC,
@@ -39,10 +43,14 @@ typedef enum {
 	NODE_DOT,
 	NODE_NAMELIST,
 	NODE_EXPLIST,
+	NODE_FUNCTIONDEF,
 	NODE_FUNCBODY,
 	NODE_PARLIST,
 	NODE_TABLECONSTRUCTOR,
+	NODE_FIELDLIST,
 	NODE_FIELD,
+	NODE_FALSE,
+	NODE_TRUE,
 	NODE_PLUS,
 	NODE_MINUS,
 	NODE_MULT,
@@ -62,7 +70,8 @@ typedef enum {
 	NODE_CONC,
 	NODE_UMINUS,
 	NODE_NOT,
-	NODE_OPLEN
+	NODE_OPLEN,
+	NODE_ELLIPS
 } node_type;
 
 #define NODE_HEADER node_type type; const char *fname; int lineno; struct node *parent
@@ -71,20 +80,25 @@ typedef struct node {
 	NODE_HEADER;
 } node;
 
-typedef struct node_integer {
-	NODE_HEADER;
-	long long i;
-} node_integer;
 
-typedef struct node_float {
+typedef struct node_number {
 	NODE_HEADER;
-	double d;
-} node_float;
+	int is_integer;
+	union {
+		double d;
+		long long i;
+	};
+} node_number;
 
 typedef struct node_string {
 	NODE_HEADER;
 	TString *ts;
 } node_string;
+
+typedef struct node_name {
+	NODE_HEADER;
+	TString *name;
+} node_name;
 
 typedef struct node_nil {
 	NODE_HEADER;
@@ -119,6 +133,7 @@ typedef struct node_break {
 typedef struct node_goto {
 	NODE_HEADER;
 	node *dest;
+	node *name;
 } node_goto;
 
 typedef struct node_do {
@@ -142,23 +157,27 @@ typedef struct node_if {
 	NODE_HEADER;
 	node *exp;
 	node *block;
-	node *elsif;
+	node *elseif;
+	node *els;
 } node_if;
 
 /* elseif or else */
-typedef struct node_elsif {
+typedef struct node_elseif {
 	NODE_HEADER;
 	node *exp;
 	node *block;
-	node *next_elsif;
-} node_elsif;
+	node *next_elseif;
+} node_elseif;
+
+typedef struct node_else {
+	NODE_HEADER;
+	node *block;
+} node_else;
 
 typedef struct node_forr {
 	NODE_HEADER;
 	node *name;
-	node *start;
-	node *end;
-	node *step;
+	node *forexplist;
 	node *block;
 } node_forr;
 
@@ -168,6 +187,13 @@ typedef struct node_forin {
 	node *explist;
 	node *block;
 } node_forin;
+
+typedef struct node_forexplist {
+	NODE_HEADER;
+	node *start;
+	node *end;
+	node *step;
+} node_forexplist;
 
 /* function */
 typedef struct node_func {
@@ -197,21 +223,24 @@ typedef struct node_return {
 
 typedef struct node_label {
 	NODE_HEADER;
-	node *name;
+	TString *name;
 	node *dest;
 } node_label;
 
+/* Name { . Name } [: Name] */
 typedef struct node_funcname {
 	NODE_HEADER;
 	int len;
-	node **names;
-	int self;		/* : format */
+	int maxLen;
+	node **pnames;
+	node *name;
 } node_funcname;
 
 typedef struct node_varlist {
 	NODE_HEADER;
 	int len;
-	node **var;
+	int maxLen;
+	node **vars;
 } node_varlist;
 
 /* prefixexp[exp] */
@@ -231,14 +260,21 @@ typedef struct node_dot {
 typedef struct node_namelist {
 	NODE_HEADER;
 	int len;
+	int maxLen;
 	node **names;
 } node_namelist;
 
 typedef struct node_explist {
 	NODE_HEADER;
 	int len;
-	node **exp;
+	int maxLen;
+	node **exps;
 } node_explist;
+
+typedef struct node_functiondef {
+	NODE_HEADER;
+	node *funcbody;
+} node_functiondef;
 
 typedef struct node_funcbody {
 	NODE_HEADER;
@@ -249,14 +285,21 @@ typedef struct node_funcbody {
 typedef struct node_parlist {
 	NODE_HEADER;
 	node *namelist;
-	node *dot3;
+	/* 最后一个参数是否是 ... */
+	int dot3;
 } node_parlist;
 
 typedef struct node_tableconstructor {
 	NODE_HEADER;
-	int len;
-	node **fields;
+	node *fieldlist;
 } node_tableconstructor;
+
+typedef struct node_fieldlist {
+	NODE_HEADER;
+	int len;
+	int maxLen;
+	node **fields;
+} node_fieldlist;
 
 /* [exp] = exp | name = exp | exp */
 typedef struct node_field {
@@ -266,41 +309,52 @@ typedef struct node_field {
 	node *expr;
 } node_field;
 
+typedef struct node_false {
+	NODE_HEADER;
+} node_false;
 
-#define Binop(op) typedef struct node_##op { \
+typedef struct node_true {
+	NODE_HEADER;
+} node_true;
+
+typedef struct node_ellips {
+	NODE_HEADER;
+} node_ellips;
+
+#define Binop_node(op) typedef struct node_##op { \
 		NODE_HEADER;	\
 		node *exp1;		\
 		node *exp2;		\
 	} node_##op
 
-Binop(plus);
-Binop(minus);
-Binop(mult);
-Binop(div);
-Binop(power);
-Binop(mod);
-Binop(eq);
-Binop(neq);
-Binop(lt);
-Binop(le);
-Binop(gt);
-Binop(ge);
-Binop(and);
-Binop(or);
-Binop(bar);
-Binop(amper);
-Binop(conc);
+Binop_node(plus);
+Binop_node(minus);
+Binop_node(mult);
+Binop_node(div);
+Binop_node(power);
+Binop_node(mod);
+Binop_node(eq);
+Binop_node(neq);
+Binop_node(lt);
+Binop_node(le);
+Binop_node(gt);
+Binop_node(ge);
+Binop_node(and);
+Binop_node (or);
+Binop_node(bar);
+Binop_node(amper);
+Binop_node(conc);
 
 
-#define Unop(op) typedef struct node_##op { \
+#define Unop_node(op) typedef struct node_##op { \
 		NODE_HEADER;	\
 		node *exp;		\
 	} node_##op
 
 
-Unop(uminus);
-Unop(not);
-Unop(oplen);
+Unop_node(uminus);
+Unop_node(not);
+Unop_node(oplen);
 
 void node_parse_init(parser_state*);
 void node_parse_free(parser_state*);
@@ -312,5 +366,7 @@ void dump_node(node *, int);
 
 void node_add_stat(node *, node *);
 node *node_new(node_type, parser_state *);
+
+void realloc_vector(void **, int *, int);
 
 #endif

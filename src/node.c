@@ -59,7 +59,7 @@ void dump_node(node *node, int indent) {
 }
 
 void node_add_stat(node *block, node *stat) {
-	assert(block != NULL && stat != stat);
+	assert(block != NULL && stat != NULL);
 	assert(block->type == NODE_BLOCK);
 	assert(stat->type == NODE_ASGN || stat->type == NODE_FUNCTIONCALL || \
 		   stat->type == NODE_BREAK || stat->type == NODE_LABEL || \
@@ -72,14 +72,7 @@ void node_add_stat(node *block, node *stat) {
 
 	node_block *b = (node_block *)block;
 	if (b->len == b->maxLen) {
-		/* TODO 错误处理 */
-		assert(b->maxLen > 0);
-		if (b->maxLen >= (1<<30)) {
-			fprintf(stderr, "Error (node_add_stat): reach stats number limit.\n");
-			exit(1);
-		}
-		b->maxLen *= 2;
-		b->stats = (node **)realloc(b->stats, b->maxLen * sizeof(node *));
+		realloc_vector( (void **)(&b->stats), &b->maxLen, sizeof(node *) );
 	}
 
 	b->stats[b->len] = stat;
@@ -107,23 +100,24 @@ void node_add_stat(node *block, node *stat) {
 node *node_new(node_type type, parser_state *p) {
 	node *n = NULL;
 	switch (type) {
-		case NODE_INT:
-			n = (node *)malloc(sizeof(node_integer));
+		case NODE_NUMBER:
+			n = (node *)malloc(sizeof(node_number));
 			if (!n) goto err;
-			n->type = NODE_INT;
-			((node_integer *)n)->i = 0;
-			break;
-		case NODE_FLOAT:
-			n = (node *)malloc(sizeof(node_float));
-			if (!n) goto err;
-			n->type = NODE_FLOAT;
-			((node_float *)n)->d = 0;
+			n->type = NODE_NUMBER;
+			((node_number *)n)->is_integer = 0;
+			((node_number *)n)->d = 0;
 			break;
 		case NODE_STRING:
 			n = (node *)malloc(sizeof(node_string));
 			if (!n) goto err;
 			n->type = NODE_STRING;
 			((node_string *)n)->ts = NULL;
+			break;
+		case NODE_NAME:
+			n = (node *)malloc(sizeof(node_name));
+			if (!n) goto err;
+			n->type = NODE_NAME;
+			((node_name *)n)->name = NULL;
 			break;
 		case NODE_NIL:
 			n = (node *)malloc(sizeof(node_nil));
@@ -135,8 +129,7 @@ node *node_new(node_type type, parser_state *p) {
 			if (!n) goto err;
 			n->type = NODE_BLOCK;
 			((node_block *)n)->len = 0;
-			/* TODO magic number 16 */
-			((node_block *)n)->maxLen = 16;
+			((node_block *)n)->maxLen = 0;
 			((node_block *)n)->stats = NULL;
 			break;
 		case NODE_ASGN:
@@ -165,6 +158,7 @@ node *node_new(node_type type, parser_state *p) {
 			if (!n) goto err;
 			n->type = NODE_GOTO;
 			((node_goto *)n)->dest = NULL;
+			((node_goto *)n)->name = NULL;
 			break;
 		case NODE_DO:
 			n = (node *)malloc(sizeof(node_do));
@@ -192,24 +186,29 @@ node *node_new(node_type type, parser_state *p) {
 			n->type = NODE_IF;
 			((node_if *)n)->exp = NULL;
 			((node_if *)n)->block = NULL;
-			((node_if *)n)->elsif = NULL;
+			((node_if *)n)->elseif = NULL;
+			((node_if *)n)->els = NULL;
 			break;
-		case NODE_ELSIF:
-			n = (node *)malloc(sizeof(node_elsif));
+		case NODE_ELSEIF:
+			n = (node *)malloc(sizeof(node_elseif));
 			if (!n) goto err;
-			n->type = NODE_ELSIF;
-			((node_elsif *)n)->exp = NULL;
-			((node_elsif *)n)->block = NULL;
-			((node_elsif *)n)->next_elsif = NULL;
+			n->type = NODE_ELSEIF;
+			((node_elseif *)n)->exp = NULL;
+			((node_elseif *)n)->block = NULL;
+			((node_elseif *)n)->next_elseif = NULL;
+			break;
+		case NODE_ELSE:
+			n = (node *)malloc(sizeof(node_else));
+			if (!n) goto err;
+			n->type = NODE_ELSE;
+			((node_else *)n)->block = NULL;
 			break;
 		case NODE_FORR:
 			n = (node *)malloc(sizeof(node_forr));
 			if (!n) goto err;
 			n->type = NODE_FORR;
 			((node_forr *)n)->name = NULL;
-			((node_forr *)n)->start = NULL;
-			((node_forr *)n)->end = NULL;
-			((node_forr *)n)->step = NULL;
+			((node_forr *)n)->forexplist = NULL;
 			((node_forr *)n)->block = NULL;
 			break;
 		case NODE_FORIN:
@@ -219,6 +218,14 @@ node *node_new(node_type type, parser_state *p) {
 			((node_forin *)n)->namelist = NULL;
 			((node_forin *)n)->explist = NULL;
 			((node_forin *)n)->block = NULL;
+			break;
+		case NODE_FOREXPLIST:
+			n = (node *)malloc(sizeof(node_forexplist));
+			if (!n) goto err;
+			n->type = NODE_FOREXPLIST;
+			((node_forexplist *)n)->start = NULL;
+			((node_forexplist *)n)->end = NULL;
+			((node_forexplist *)n)->step = NULL;
 			break;
 		case NODE_FUNC:
 			n = (node *)malloc(sizeof(node_func));
@@ -259,15 +266,18 @@ node *node_new(node_type type, parser_state *p) {
 			if (!n) goto err;
 			n->type = NODE_FUNCNAME;
 			((node_funcname *)n)->len = 0;
-			((node_funcname *)n)->names = NULL;
-			((node_funcname *)n)->self = 0;
+			/* 8 magic number */
+			((node_funcname *)n)->maxLen = 0;
+			((node_funcname *)n)->pnames = NULL;
+			((node_funcname *)n)->name = NULL;
 			break;
 		case NODE_VARLIST:
 			n = (node *)malloc(sizeof(node_varlist));
 			if (!n) goto err;
 			n->type = NODE_VARLIST;
 			((node_varlist *)n)->len = 0;
-			((node_varlist *)n)->var = NULL;
+			((node_varlist *)n)->maxLen = 0;
+			((node_varlist *)n)->vars = NULL;
 			break;
 		case NODE_INDEX:
 			n = (node *)malloc(sizeof(node_index));
@@ -288,6 +298,7 @@ node *node_new(node_type type, parser_state *p) {
 			if (!n) goto err;
 			n->type = NODE_NAMELIST;
 			((node_namelist *)n)->len = 0;
+			((node_namelist *)n)->maxLen = 0;
 			((node_namelist *)n)->names = NULL;
 			break;
 		case NODE_EXPLIST:
@@ -295,7 +306,14 @@ node *node_new(node_type type, parser_state *p) {
 			if (!n) goto err;
 			n->type = NODE_EXPLIST;
 			((node_explist *)n)->len = 0;
-			((node_explist *)n)->exp = NULL;
+			((node_explist *)n)->maxLen = 0;
+			((node_explist *)n)->exps = NULL;
+			break;
+		case NODE_FUNCTIONDEF:
+			n = (node *)malloc(sizeof(node_functiondef));
+			if (!n) goto err;
+			n->type = NODE_FUNCTIONDEF;
+			((node_functiondef *)n)->funcbody = NULL;
 			break;
 		case NODE_FUNCBODY:
 			n = (node *)malloc(sizeof(node_funcbody));
@@ -309,14 +327,21 @@ node *node_new(node_type type, parser_state *p) {
 			if (!n) goto err;
 			n->type = NODE_PARLIST;
 			((node_parlist *)n)->namelist = NULL;
-			((node_parlist *)n)->dot3 = NULL;
+			((node_parlist *)n)->dot3 = 0;
 			break;
 		case NODE_TABLECONSTRUCTOR:
 			n = (node *)malloc(sizeof(node_tableconstructor));
 			if (!n) goto err;
 			n->type = NODE_TABLECONSTRUCTOR;
-			((node_tableconstructor *)n)->len = 0;
-			((node_tableconstructor *)n)->fields = NULL;
+			((node_tableconstructor *)n)->fieldlist = NULL;
+			break;
+		case NODE_FIELDLIST:
+			n = (node *)malloc(sizeof(node_fieldlist));
+			if (!n) goto err;
+			n->type = NODE_FIELDLIST;
+			((node_fieldlist *)n)->len = 0;
+			((node_fieldlist *)n)->maxLen = 0;
+			((node_fieldlist *)n)->fields = NULL;
 			break;
 		case NODE_FIELD:
 			n = (node *)malloc(sizeof(node_field));
@@ -325,6 +350,21 @@ node *node_new(node_type type, parser_state *p) {
 			((node_field *)n)->name = NULL;
 			((node_field *)n)->expl = NULL;
 			((node_field *)n)->expr = NULL;
+			break;
+		case NODE_FALSE:
+			n = (node *)malloc(sizeof(node_false));
+			if (!n) goto err;
+			n->type = NODE_FALSE;
+			break;
+		case NODE_TRUE:
+			n = (node *)malloc(sizeof(node_true));
+			if (!n) goto err;
+			n->type = NODE_TRUE;
+			break;
+		case NODE_ELLIPS:
+			n = (node *)malloc(sizeof(node_ellips));
+			if (!n) goto err;
+			n->type = NODE_ELLIPS;
 			break;
 		Binop_case(PLUS, plus);
 		Binop_case(MINUS, minus);
@@ -359,6 +399,23 @@ node *node_new(node_type type, parser_state *p) {
 err:
 	fprintf(stderr, "Error (node_new): Out of memory.\n");
 	exit(1);
+}
+
+
+/* TODO 应该划分到别的文件中*/
+void realloc_vector(void **v, int *old_len, int sz) {
+	if (*old_len >= (1<<30)) {
+		fprintf(stderr, "error realloc_vector len too large.\n");
+		exit(1);
+	}
+	int new_len = 0;
+	if (0 == *old_len) {
+		new_len = 1;
+	} else {
+		new_len = 2 * (*old_len);
+	}
+	*v = realloc(*v, new_len * sz);
+	*old_len = new_len;
 }
 
 #endif

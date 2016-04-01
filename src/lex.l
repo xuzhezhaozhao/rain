@@ -88,10 +88,19 @@ false					LEX_RETURN(keyword_false);
 
 
 
-{WORD}					LEX_RETURN(identifier);
-{NUMBER}				LEX_RETURN(lit_number);
+{WORD}					{
+							lval->nd = node_new(NODE_NAME, p);
+							LEX_RETURN(Name);
+						}
+{NUMBER}				{
+							lval->nd = node_new(NODE_NUMBER, p);
+							LEX_RETURN(Numeral);
+						}
 
-::{WORD}::				LEX_RETURN(label);
+::{WORD}::				{
+							lval->nd = node_new(NODE_LABEL, p);
+							LEX_RETURN(label);
+						}
 
 [(\[{,;:.]		 		LEX_RETURN(yytext[0]);
 [)\]}]           		LEX_RETURN(yytext[0]);
@@ -99,7 +108,7 @@ false					LEX_RETURN(keyword_false);
 
 \"([^\\\"]|\\.)*\" |
 \'([^\\\']|\\.)*\' {
-  LEX_RETURN(lit_string);
+  LEX_RETURN(LiteralString);
 }
 
 
