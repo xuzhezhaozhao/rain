@@ -14,11 +14,11 @@ typedef struct parser_state {
 typedef enum {
 	NODE_INT,
 	NODE_FLOAT,
-	NODE_STR,
+	NODE_STRING,
 	NODE_NIL,
 	NODE_BLOCK,
-	NODE_asgn,
-	NODE_FUNTIONCALL,
+	NODE_ASGN,
+	NODE_FUNCTIONCALL,
 	NODE_BREAK,
 	NODE_GOTO,
 	NODE_DO,
@@ -26,7 +26,6 @@ typedef enum {
 	NODE_REPEAT,
 	NODE_IF,
 	NODE_ELSIF,
-	NODE_ELS,
 	NODE_FORR,
 	NODE_FORIN,
 	NODE_FUNC,
@@ -66,7 +65,7 @@ typedef enum {
 	NODE_OPLEN
 } node_type;
 
-#define NODE_HEADER node_type type; const char *fname; int lineno
+#define NODE_HEADER node_type type; const char *fname; int lineno; struct node *parent
 
 typedef struct node {
 	NODE_HEADER;
@@ -84,18 +83,18 @@ typedef struct node_float {
 
 typedef struct node_string {
 	NODE_HEADER;
-	TString *s;
+	TString *ts;
 } node_string;
 
 typedef struct node_nil {
 	NODE_HEADER;
-} ndoe_nil;
+} node_nil;
 
 typedef struct node_block {
 	NODE_HEADER;
 	int len;
 	int maxLen;
-	node *stats;
+	node **stats;
 } node_block;
 
 
@@ -114,7 +113,7 @@ typedef struct node_functioncall {
 
 typedef struct node_break {
 	NODE_HEADER;
-	node *next;
+	node *dest;
 } node_break;
 
 typedef struct node_goto {
@@ -131,7 +130,6 @@ typedef struct node_while {
 	NODE_HEADER;
 	node *exp;
 	node *block;
-	node *next;
 } node_while;
 
 typedef struct node_repeat {
@@ -145,9 +143,9 @@ typedef struct node_if {
 	node *exp;
 	node *block;
 	node *elsif;
-	node *els;
 } node_if;
 
+/* elseif or else */
 typedef struct node_elsif {
 	NODE_HEADER;
 	node *exp;
@@ -155,18 +153,13 @@ typedef struct node_elsif {
 	node *next_elsif;
 } node_elsif;
 
-typedef struct node_els {
-	NODE_HEADER;
-	node *block;
-} node_els;
-
 typedef struct node_forr {
 	NODE_HEADER;
 	node *name;
 	node *start;
 	node *end;
 	node *step;
-	node *next;
+	node *block;
 } node_forr;
 
 typedef struct node_forin {
@@ -174,7 +167,6 @@ typedef struct node_forin {
 	node *namelist;
 	node *explist;
 	node *block;
-	node *next;
 } node_forin;
 
 /* function */
@@ -206,20 +198,20 @@ typedef struct node_return {
 typedef struct node_label {
 	NODE_HEADER;
 	node *name;
-	node *next;
+	node *dest;
 } node_label;
 
 typedef struct node_funcname {
 	NODE_HEADER;
 	int len;
-	node *names;
+	node **names;
 	int self;		/* : format */
 } node_funcname;
 
 typedef struct node_varlist {
 	NODE_HEADER;
 	int len;
-	node *var;
+	node **var;
 } node_varlist;
 
 /* prefixexp[exp] */
@@ -239,13 +231,13 @@ typedef struct node_dot {
 typedef struct node_namelist {
 	NODE_HEADER;
 	int len;
-	node *names;
+	node **names;
 } node_namelist;
 
 typedef struct node_explist {
 	NODE_HEADER;
 	int len;
-	node *exp;
+	node **exp;
 } node_explist;
 
 typedef struct node_funcbody {
@@ -263,7 +255,7 @@ typedef struct node_parlist {
 typedef struct node_tableconstructor {
 	NODE_HEADER;
 	int len;
-	node *fields;
+	node **fields;
 } node_tableconstructor;
 
 /* [exp] = exp | name = exp | exp */
@@ -317,5 +309,8 @@ int node_parse_input(parser_state*, FILE* in, const char*);
 int node_parse_string(parser_state*, const char*);
 
 void dump_node(node *, int);
+
+void node_add_stat(node *, node *);
+node *node_new(node_type, parser_state *);
 
 #endif

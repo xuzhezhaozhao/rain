@@ -110,28 +110,90 @@ chunk				: block
 
 block 				: stats 
 						{
+							$$ = $1;
 						} 
 					| stats retstat
 						{
-							
+							node_add_stat($1, $2);
+							$$ = $1;
 						}
 
 stats 				:
 						{
-
+							$$ = node_new(NODE_BLOCK, p);
 						} 
 		  			| stats stat
+						{
+							node_add_stat($1, $2);
+							$$ = $1;
+						}
 
 stat 				: ';'
+						{ }
 		  			| varlist op_asgn explist
+						{
+							$$ = node_new(NODE_ASGN, p);
+							node_asgn *n = (node_asgn *)$$;
+							n->varlist = $1;
+							n->explist = $3;
+							$1->parent = $$;
+							$3->parent = $$;
+						}
 					| functioncall
+						{
+							$$ = $1;
+						}
 					| label
+						{
+							$$ = node_new(NODE_LABEL, p);
+							node_label *n = (node_label *)$$;
+							n->name = $1;
+							/* TODO dest 指向下一条指令 */
+							n->dest = NULL;
+						}
 					| keyword_break
+						{
+							/* TODO */
+							$$ = node_new(NODE_BREAK, p);
+						}
 					| keyword_goto Name
+						{
+							/* TODO */
+							$$ = node_new(NODE_GOTO, p);
+						}
 					| keyword_do block keyword_end
+						{
+							$$ = node_new(NODE_DO, p);
+							((node_do *)$$)->block = $2;
+							$2->parent = $$;
+						}
 					| keyword_while exp keyword_do block keyword_end
+						{
+							$$ = node_new(NODE_WHILE, p);
+							node_while *n = (node_while *)$$;
+							n->exp = $2;
+							n->block = $4;
+							$2->parent = $$;
+							$4->parent = $$;
+							/* TODO */
+						}
 					| keyword_repeat block keyword_until exp
+						{
+							$$ = node_new(NODE_REPEAT, p);
+							node_repeat *n = (node_repeat *)$$;
+							n->block = $2;
+							n->exp = $4;
+							$2->parent = $$;
+							$4->parent = $$;
+						}
 					| keyword_if exp keyword_then block elsepart keyword_end
+						{
+							$$ = node_new(NODE_IF, p);
+							node_if *n = (node_if *)$$;
+							n->exp = $2;
+							n->block = $4;
+							n->elsif = $5;
+						}
 					| keyword_for Name op_asgn forexplist keyword_do block keyword_end
 					| keyword_for namelist keyword_in explist keyword_do block keyword_end
 					| keyword_function funcname funcbody
