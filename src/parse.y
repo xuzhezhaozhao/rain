@@ -3,6 +3,8 @@
 #define YYDEBUG 1
 #define YYERROR_VERBOSE 1
 
+#include <assert.h>
+
 #include "node.h"
 #include "tstring.h"
 
@@ -377,17 +379,18 @@ varlist 			: var
 		  					$$ = node_new(NODE_VARLIST, p);
 							node_varlist *n = (node_varlist *)$$;
 							if (n->len == n->maxLen) {
-								realloc_vector( (void **)n->vars,
+								realloc_vector( (void **)(&n->vars),
 								&n->maxLen, sizeof(node *) );
 							}
 							n->vars[n->len] = $1;
+							n->len++;
 							$1->parent = $$;
 						}
 		   			| varlist ',' var
 						{
 							node_varlist *n = (node_varlist *)$1;
 							if (n->len == n->maxLen) {
-								realloc_vector( (void **)n->vars,
+								realloc_vector( (void **)&n->vars,
 								&n->maxLen, sizeof(node *) );
 							}
 							n->vars[n->len] = $3;
