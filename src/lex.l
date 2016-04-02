@@ -5,7 +5,7 @@
 
 %{
 static int lex_return(parser_state *p, int c) {
-	/* TODO */
+	p->lineno = yylineno;
 	return c;
 }
 

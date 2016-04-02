@@ -853,8 +853,8 @@ static void yyerror(parser_state *p, const char *s)
 {
 	++p->nerr;
 	if (p->fname) {
-    	fprintf(stderr, "%s:%d:%s\n", p->fname, yylineno, s);
+    	fprintf(stderr, "%s:%d:%s\n", p->fname, p->lineno, s);
 	} else {
-    	fprintf(stderr, "%d:%s\n", yylineno, s);
+    	fprintf(stderr, "%d:%s\n", p->lineno, s);
 	}
 }

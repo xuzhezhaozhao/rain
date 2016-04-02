@@ -32,6 +32,7 @@ int node_parse_file(parser_state *p, const char *fname) {
 
 int node_parse_input(parser_state *p, FILE *f, const char *fname) {
 	yyrestart(f);
+	yylineno = 0;
 	int n = yyparse(p);
 	if (0 == n && 0 == p->nerr) {
 		return 0;
