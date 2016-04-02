@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 
 	if (n == 0) {
 		if (verbose) {
-			dump_node(state.lval, 0);
+			/*dump_node(state.lval, 0);*/
 		}
 		if (check) {
 			puts("Syntax OK");

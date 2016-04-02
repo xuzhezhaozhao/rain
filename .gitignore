@@ -8,3 +8,4 @@ src/lex.yy.h
 src/y.tab.c
 src/y.tab.h
 bin/
+tags

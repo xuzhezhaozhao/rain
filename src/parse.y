@@ -125,12 +125,16 @@ stats 				:
 						} 
 		  			| stats stat
 						{
-							node_add_stat($1, $2);
-							$$ = $1;
+							if ($2) {
+								node_add_stat($1, $2);
+								$$ = $1;
+							}
 						}
 
 stat 				: ';'
-						{ }
+						{
+							$$ = NULL; 
+						}
 		  			| varlist op_asgn explist
 						{
 							$$ = node_new(NODE_ASGN, p);

@@ -1,0 +1,11 @@
+a()
+a(1, b, c);
+people.id()
+people.name.first(self)
+ids[1+3+a*b/5]()
+ids[1+3+a*b/5].name(self)
+a.b.c.d:e()
+f(a,b,c)(d,e,f).a().b(1, 3, ...)().c()
+a(...)
+b(1, a, ...)
+a(...,a,b)
